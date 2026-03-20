@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2, Plus, Sparkles, Star, Angry, Frown, Smile, Zap } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Trash2, Angry, Frown, Smile, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { useStore } from '@/lib/store'
 import type { TimeEntry, Emotion, Category } from '@/lib/types'
-import { EMOTIONS, CATEGORIES } from '@/lib/types'
+import { CATEGORIES } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface EntryModalProps {
@@ -19,26 +19,12 @@ interface EntryModalProps {
   selectedDate?: string
 }
 
-// 🎨 感情設定：アイコンを大きく、色を鮮明に
 const EMOTION_CONFIG: Record<Emotion, { icon: any; color: string; label: string }> = {
   anger: { label: '怒', color: '#800000', icon: Angry },
   sorrow: { label: '哀', color: '#3B82F6', icon: Frown },
   joy: { label: '喜', color: '#FBBF24', icon: Smile },
   happiness: { label: '楽', color: '#F472B6', icon: Zap },
 }
-
-const CATEGORY_STYLES: Record<Category, { bg: string; border: string; icon: string }> = {
-  'self-investment': { bg: 'bg-self-investment/15', border: 'border-self-investment', icon: '📚' },
-  'self-reward': { bg: 'bg-self-reward/15', border: 'border-self-reward', icon: '✨' },
-  'living-cost': { bg: 'bg-living-cost/15', border: 'border-living-cost', icon: '🏠' },
-  'waste': { bg: 'bg-waste/15', border: 'border-waste', icon: '💸' },
-}
-
-// ヘルパー関数は維持
-function StarParticle({ style }: { style: React.CSSProperties }) { return <div className="absolute pointer-events-none animate-star-float" style={style}><Star className="w-3 h-3 text-yellow-400 fill-yellow-400" /></div> }
-function SparkleParticle({ style }: { style: React.CSSProperties }) { return <div className="absolute pointer-events-none float-particle" style={style}><Sparkles className="w-4 h-4 text-self-reward" /></div> }
-function getAvatarColor(name: string): string { const colors = ['bg-primary', 'bg-self-investment', 'bg-self-reward', 'bg-accent']; let hash = 0; for (let i = 0; i < name.length; i++) { hash = name.charCodeAt(i) + ((hash << 5) - hash); } return colors[Math.abs(hash) % colors.length]; }
-function getInitials(name: string): string { if (name === '自分') return '私'; if (name === '会社') return '社'; return name.length <= 2 ? name : name.charAt(0); }
 
 export function EntryModal({ isOpen, onClose, initialHour = 9, editEntry, selectedDate }: EntryModalProps) {
   const { addEntry, updateEntry, deleteEntry, people, addPerson } = useStore()
@@ -51,13 +37,12 @@ export function EntryModal({ isOpen, onClose, initialHour = 9, editEntry, select
   const [startHour, setStartHour] = useState(initialHour)
   const [endHour, setEndHour] = useState(initialHour + 1)
 
-  // 👥 人物リストを自動で固定
   useEffect(() => {
     const defaultList = ["自分", "仕事", "父", "母", "上司", "田中さん"]
     defaultList.forEach(name => {
       if (!people.find(p => p.name === name)) addPerson(name)
     })
-  }, [])
+  }, [people, addPerson])
 
   useEffect(() => {
     if (editEntry) {
@@ -76,41 +61,80 @@ export function EntryModal({ isOpen, onClose, initialHour = 9, editEntry, select
     }
   }, [editEntry, initialHour, isOpen])
 
-  const handleSubmit = () => {
-    let maxEmotion: Emotion = 'joy'; let maxValue = -1;
-    Object.entries(emotionValues).forEach(([em, val]) => { if (Math.abs(val) > maxValue) { maxValue = Math.abs(val); maxEmotion = em as Emotion; } });
-    addEntry({
-      date: selectedDate || new Date().toISOString().split('T')[0],
-      startHour, endHour, content, people: selectedPeople, amount: parseInt(amount) || 0,
-      amountType, category, emotion: maxEmotion, emotionIntensity: maxValue === 0 ? 1 : maxValue,
-    });
-    onClose()
-  }
-
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full sm:max-w-lg bg-white rounded-t-[40px] sm:rounded-[40px] shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full sm:max-w-xl bg-white rounded-t-[40px] sm:rounded-[40px] shadow-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-10">
         
-        {/* Header: 文字を大きく */}
-        <div className="flex items-center justify-between p-7 border-b border-slate-100 sticky top-0 bg-white/80 backdrop-blur-md z-10">
-          <h2 className="text-2xl font-bold text-slate-800">{editEntry ? '記録を編集' : '今日の記録'}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="h-6 w-6" /></Button>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-black text-slate-800">{editEntry ? '編集' : '記録'}</h2>
+          <Button variant="ghost" onClick={onClose} className="rounded-full h-12 w-12"><X className="h-8 w-8" /></Button>
         </div>
 
-        <div className="p-8 space-y-10">
-          {/* 1. 時間: セレクトボックスを大きく */}
-          <div className="flex gap-6 items-center bg-slate-50 p-6 rounded-3xl">
-            <div className="flex-1 space-y-2">
-              <Label className="text-sm font-bold text-slate-500 ml-1">開始</Label>
-              <select value={startHour} onChange={(e) => setStartHour(parseInt(e.target.value))} className="w-full h-14 text-xl px-4 rounded-2xl bg-white border-none shadow-sm font-semibold">
-                {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>)}
-              </select>
+        <div className="space-y-12">
+          {/* 時間セクション - 特大化 */}
+          <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[30px]">
+            <div className="space-y-2">
+              <Label className="text-lg font-bold text-slate-400">開始</Label>
+              <select value={startHour} onChange={(e) => setStartHour(parseInt(e.target.value))} className="w-full h-16 text-2xl font-bold bg-white rounded-2xl border-none px-4 shadow-sm">{Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i}:00</option>)}</select>
             </div>
-            <span className="text-2xl text-slate-300 mt-6">→</span>
-            <div className="flex-1 space-y-2">
-              <Label className="text-sm font-bold text-slate-500 ml-1">終了</Label>
-              <select value={endHour} onChange={(e) => setEndHour(parseInt(e.target.value))} className="w-full h-14 text-xl px-4 rounded-2xl bg-white border-none shadow-sm font-semibold">
-                {Array
+            <div className="space-y-2">
+              <Label className="text-lg font-bold text-slate-400">終了</Label>
+              <select value={endHour} onChange={(e) => setEndHour(parseInt(e.target.value))} className="w-full h-16 text-2xl font-bold bg-white rounded-2xl border-none px-4 shadow-sm">{Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i}:00</option>)}</select>
+            </div>
+          </div>
+
+          {/* 内容 - 特大化 */}
+          <div className="space-y-3">
+            <Label className="text-xl font-bold text-slate-700">内容</Label>
+            <Input value={content} onChange={(e) => setContent(e.target.value)} className="h-20 text-2xl rounded-2xl bg-slate-50 border-none px-6" />
+          </div>
+
+          {/* 人物 - ゆったり配置 */}
+          <div className="space-y-4">
+            <Label className="text-xl font-bold text-slate-700">誰と？</Label>
+            <div className="flex flex-wrap gap-4">
+              {people.map((p) => (
+                <button key={p.id} onClick={() => setSelectedPeople(prev => prev.includes(p.name) ? prev.filter(x => x !== p.name) : [...prev, p.name])}
+                  className={cn("px-8 py-4 rounded-2xl text-xl font-bold shadow-sm transition-all", selectedPeople.includes(p.name) ? "bg-primary text-white scale-110" : "bg-slate-50 text-slate-400")}>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 感情 - ここが一番変わります */}
+          <div className="space-y-8 border-t pt-8">
+            <Label className="text-xl font-bold text-slate-700 block text-center">今の気持ち</Label>
+            {Object.entries(EMOTION_CONFIG).map(([id, config]) => {
+              const Icon = config.icon; const val = emotionValues[id as Emotion];
+              return (
+                <div key={id} className="flex items-center gap-8 bg-slate-50 p-6 rounded-[30px]">
+                  <div className="flex flex-col items-center w-24">
+                    <div className={cn("p-5 rounded-full transition-all", val > 0 ? "scale-125 shadow-xl" : "opacity-20")} style={{ backgroundColor: val > 0 ? config.color : 'transparent', color: val > 0 ? 'white' : config.color }}>
+                      <Icon className="w-12 h-12" />
+                    </div>
+                    <span className="text-lg font-black mt-2" style={{ color: config.color }}>{config.label}</span>
+                  </div>
+                  <Slider value={[val]} onValueChange={(v) => setEmotionValues(prev => ({ ...prev, [id]: v[0] }))} min={0} max={5} step={1} className="flex-1 h-6" />
+                </div>
+              )
+            })}
+          </div>
+
+          <Button onClick={() => {
+            const maxEm = Object.entries(emotionValues).reduce((a, b) => Math.abs(a[1]) > Math.abs(b[1]) ? a : b);
+            addEntry({
+              date: selectedDate || new Date().toISOString().split('T')[0],
+              startHour, endHour, content, people: selectedPeople, amount: parseInt(amount) || 0,
+              amountType, category, emotion: maxEm[0] as Emotion, emotionIntensity: Math.abs(maxEm[1]) || 1,
+            });
+            onClose();
+          }} className="w-full h-24 text-3xl font-black rounded-[35px] bg-primary text-white shadow-2xl">保存する</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
