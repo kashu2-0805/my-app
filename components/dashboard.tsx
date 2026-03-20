@@ -8,7 +8,7 @@ import { Users, Heart, PieChart as PieIcon, Smile, Frown, Angry, Zap, TrendingUp
 
 export function Dashboard() {
   const { entries = [] } = useStore()
-  const [range, setRange] = useState<'1W' | '1M' | '1Y'>('1W')
+  const [range, setRange] = useState<'1D' | '1W' | '1M' | '6M'>('1W')
 
   const EMOTION_CONFIG: any = {
     anger: { label: '怒', color: '#BC8F8F', icon: Angry },     
@@ -17,28 +17,39 @@ export function Dashboard() {
     happiness: { label: '楽', color: '#F472B6', icon: Zap },   
   }
 
-  // 1. 📈 期間に応じたグラフデータの生成
+  // 1. 📈 期間フィルタリングとデータの圧縮ロジック
   const timelineData = useMemo(() => {
     if (!entries.length) return []
 
-    // 期間設定に基づいたフォーマット関数
-    const formatDate = (dateStr: string) => {
-      const date = new Date(dateStr)
-      if (range === '1Y') return `${date.getMonth() + 1}月`
-      if (range === '1M') return `${date.getDate()}日`
-      return `${date.getMonth() + 1}/${date.getDate()}` // 1週間は月日
-    }
+    const now = new Date()
+    const filterDate = new Date()
+    
+    // 期間の計算
+    if (range === '1D') filterDate.setHours(now.getHours() - 24)
+    else if (range === '1W') filterDate.setDate(now.getDate() - 7)
+    else if (range === '1M') filterDate.setMonth(now.getMonth() - 1)
+    else if (range === '6M') filterDate.setMonth(now.getMonth() - 6)
 
-    // データを日付順に並び替え
-    const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    // 期間内のデータをすべて抽出（ここを「10件」ではなく「全件」にすることで圧縮されます）
+    const filtered = entries
+      .filter(e => new Date(e.date) >= filterDate)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
-    // 期間でフィルタリング（簡易実装：直近のデータを各単位で集約）
-    return sortedEntries.map((e) => ({
-      displayDate: formatDate(e.date),
-      intensity: e.emotionIntensity || 50,
-      fullDate: e.date,
-      time: `${e.startHour}:00`
-    }))
+    return filtered.map((e) => {
+      const d = new Date(e.date)
+      let label = ""
+      if (range === '1D') label = `${e.startHour}:00`
+      else if (range === '1W') label = `${d.getMonth() + 1}/${d.getDate()}`
+      else if (range === '1M') label = `${d.getDate()}日`
+      else label = `${d.getMonth() + 1}月`
+
+      return {
+        displayDate: label,
+        intensity: e.emotionIntensity || 50,
+        fullDate: e.date,
+        time: `${e.startHour}:00`
+      }
+    })
   }, [entries, range])
 
   // 2. カテゴリー集計
@@ -87,19 +98,19 @@ export function Dashboard() {
 
   return (
     <div className="p-6 space-y-12 h-full overflow-y-auto bg-slate-50 pb-40 text-slate-800">
-      <div className="space-y-2 text-center sm:text-left">
+      <div className="space-y-2 text-center sm:text-left leading-none">
         <h2 className="text-3xl font-black tracking-tight leading-none">エネルギー分析</h2>
         <p className="text-slate-500 font-medium tracking-tight leading-none pt-2">人生のバイオリズムを俯瞰する</p>
       </div>
 
-      {/* 📈 感情の推移グラフ（軸の自動切り替え対応） */}
+      {/* 📈 感情の推移グラフ（圧縮対応） */}
       <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
         <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 pt-8 px-8">
           <CardTitle className="text-slate-700 text-base font-bold flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-indigo-400" /> 感情のバイオリズム
           </CardTitle>
           <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-            {(['1W', '1M', '1Y'] as const).map((r) => (
+            {(['1D', '1W', '1M', '6M'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
@@ -107,7 +118,7 @@ export function Dashboard() {
                   range === r ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                {r === '1W' ? '1週間' : r === '1M' ? '1ヶ月' : '1年'}
+                {r === '1D' ? '1日' : r === '1W' ? '1週間' : r === '1M' ? '1ヶ月' : '半年'}
               </button>
             ))}
           </div>
@@ -121,22 +132,29 @@ export function Dashboard() {
                 stroke="#cbd5e1" 
                 fontSize={12} 
                 tickLine={false} 
-                axisLine={false} 
-                interval={range === '1W' ? 0 : 'preserveStartEnd'} // 1年時は間引いて表示
+                axisLine={false}
+                interval={range === '1D' ? 1 : 'preserveStartEnd'}
               />
               <YAxis hide domain={[0, 100]} />
               <Tooltip 
                 labelFormatter={(label, payload) => payload[0]?.payload.fullDate || label}
                 contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
               />
-              <Line type="monotone" dataKey="intensity" stroke="#6366f1" strokeWidth={4} dot={{ r: 6, fill: "#6366f1", strokeWidth: 0 }} />
+              <Line 
+                type="monotone" 
+                dataKey="intensity" 
+                stroke="#6366f1" 
+                strokeWidth={4} 
+                dot={timelineData.length > 30 ? false : { r: 6, fill: "#6366f1", strokeWidth: 0 }} 
+                animationDuration={1000}
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* A. 円グラフ */}
+        {/* A. 円グラフ（肉厚） */}
         <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
           <CardHeader className="pb-0 pt-8 text-center">
             <CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2">
@@ -175,10 +193,10 @@ export function Dashboard() {
         </h4>
         <div className="grid grid-cols-1 gap-10">
           {personStats.map((stat) => (
-            <div key={stat.name} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-8 transition-all hover:shadow-md">
+            <div key={stat.name} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-10 transition-all hover:shadow-md">
               <div className="flex flex-col lg:flex-row justify-between items-start gap-8 leading-none">
                 <div className="w-full lg:w-1/4 leading-none pt-2">
-                  <span className="text-[14px] font-bold text-slate-400 uppercase tracking-[0.2em] block mb-3">相手</span>
+                  <span className="text-[14px] font-bold text-slate-400 uppercase tracking-[0.2em] block mb-3 leading-none font-bold">相手</span>
                   <div className="text-3xl font-black leading-none">{stat.name} <span className="text-lg font-medium text-slate-400">さん</span></div>
                 </div>
                 <div className="flex flex-col lg:flex-row lg:flex-1 w-full gap-8 lg:gap-12">
@@ -193,15 +211,15 @@ export function Dashboard() {
                   </div>
                   <div className="w-full lg:w-1/2 space-y-6 text-left lg:text-right border-t lg:border-t-0 pt-6 lg:pt-0 order-3 lg:order-none">
                     <div className="space-y-1">
-                      <span className="text-[14px] font-bold text-rose-400 uppercase tracking-[0.2em] block mb-2">GIVE (支出)</span>
-                      <div className="flex items-center lg:justify-end">
+                      <span className="text-[14px] font-bold text-rose-400 uppercase tracking-[0.2em] block mb-2 leading-none font-bold">GIVE (支出)</span>
+                      <div className="flex items-center lg:justify-end leading-none">
                         <span className="text-2xl font-black text-rose-300 mr-1 italic">¥</span>
                         <span className="text-5xl font-black text-rose-500 tracking-tighter italic leading-none">{stat.spent.toLocaleString()}</span>
                       </div>
                     </div>
-                    <div className="space-y-1 pt-2">
-                      <span className="text-[14px] font-bold text-indigo-400 uppercase tracking-[0.2em] block mb-2">GIFT (収入)</span>
-                      <div className="flex items-center lg:justify-end">
+                    <div className="space-y-1 pt-2 leading-none">
+                      <span className="text-[14px] font-bold text-indigo-400 uppercase tracking-[0.2em] block mb-2 leading-none font-bold">GIFT (収入)</span>
+                      <div className="flex items-center lg:justify-end leading-none">
                         <span className="text-2xl font-black text-indigo-300 mr-1 italic">¥</span>
                         <span className="text-5xl font-black text-indigo-500 tracking-tighter italic leading-none">{stat.received.toLocaleString()}</span>
                       </div>
@@ -209,8 +227,8 @@ export function Dashboard() {
                   </div>
                 </div>
               </div>
-              <div className="pt-8 border-t border-slate-50 space-y-4">
-                <span className="text-[14px] font-bold text-slate-400 tracking-[0.2em] uppercase ml-1 block mb-2">感情のバランス</span>
+              <div className="pt-8 border-t border-slate-50 space-y-4 leading-none">
+                <span className="text-[14px] font-bold text-slate-400 tracking-[0.2em] uppercase ml-1 block mb-2 leading-none font-bold">感情のバランス</span>
                 <div className="h-8 bg-slate-50 rounded-2xl overflow-hidden flex w-full border border-slate-100 shadow-inner">
                   {Object.entries(stat.emotions).map(([id, count]) => {
                     const config = EMOTION_CONFIG[id];
