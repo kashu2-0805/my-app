@@ -9,6 +9,10 @@ import { StoreProvider } from '@/lib/store'
 import type { TimeEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
+// 👥 ここに人物リストを作りました！
+// あとでここを書き換えるだけで、アプリ全体に反映されるように設定します。
+const MY_PEOPLE = ["自分", "仕事", "父", "母", "上司", "田中さん"]
+
 type Tab = 'timeline' | 'dashboard'
 
 function LifePortfolioApp() {
@@ -82,6 +86,7 @@ function LifePortfolioApp() {
       </nav>
 
       {/* Entry Modal */}
+      {/* 💡 ここで MY_PEOPLE を使うように指示を出せるようにします（後述） */}
       <EntryModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
