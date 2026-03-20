@@ -26,6 +26,13 @@ const EMOTION_CONFIG: Record<Emotion, { icon: any; color: string; label: string 
   happiness: { label: '楽', color: '#F472B6', icon: Zap },
 }
 
+const CATEGORY_STYLES: Record<Category, { icon: string }> = {
+  'self-investment': { icon: '📚' },
+  'self-reward': { icon: '✨' },
+  'living-cost': { icon: '🏠' },
+  'waste': { icon: '💸' },
+}
+
 export function EntryModal({ isOpen, onClose, initialHour = 9, editEntry, selectedDate }: EntryModalProps) {
   const { addEntry, updateEntry, deleteEntry, people, addPerson } = useStore()
   const [content, setContent] = useState('')
@@ -64,77 +71,41 @@ export function EntryModal({ isOpen, onClose, initialHour = 9, editEntry, select
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full sm:max-w-xl bg-white rounded-t-[40px] sm:rounded-[40px] shadow-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-10">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md bg-card rounded-[32px] shadow-2xl max-h-[85vh] overflow-y-auto bg-white">
         
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-black text-slate-800">{editEntry ? '編集' : '記録'}</h2>
-          <Button variant="ghost" onClick={onClose} className="rounded-full h-12 w-12"><X className="h-8 w-8" /></Button>
+        <div className="flex items-center justify-between p-6 border-b border-slate-50 sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-bold text-slate-800">{editEntry ? '編集' : '今日の記録'}</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="h-5 w-5" /></Button>
         </div>
 
-        <div className="space-y-12">
-          {/* 時間セクション - 特大化 */}
-          <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[30px]">
-            <div className="space-y-2">
-              <Label className="text-lg font-bold text-slate-400">開始</Label>
-              <select value={startHour} onChange={(e) => setStartHour(parseInt(e.target.value))} className="w-full h-16 text-2xl font-bold bg-white rounded-2xl border-none px-4 shadow-sm">{Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i}:00</option>)}</select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-lg font-bold text-slate-400">終了</Label>
-              <select value={endHour} onChange={(e) => setEndHour(parseInt(e.target.value))} className="w-full h-16 text-2xl font-bold bg-white rounded-2xl border-none px-4 shadow-sm">{Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i}:00</option>)}</select>
-            </div>
+        <div className="p-6 space-y-8">
+          {/* 時間 */}
+          <div className="flex gap-3 items-center">
+            <select value={startHour} onChange={(e) => setStartHour(parseInt(e.target.value))} className="flex-1 h-12 rounded-xl bg-slate-50 border-none font-medium text-center">
+              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i}:00</option>)}
+            </select>
+            <span className="text-slate-300">→</span>
+            <select value={endHour} onChange={(e) => setEndHour(parseInt(e.target.value))} className="flex-1 h-12 rounded-xl bg-slate-50 border-none font-medium text-center">
+              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i}:00</option>)}
+            </select>
           </div>
 
-          {/* 内容 - 特大化 */}
+          {/* 内容 */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-500">何をしましたか？</Label>
+            <Input value={content} onChange={(e) => setContent(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none px-4" />
+          </div>
+
+          {/* 人物 */}
           <div className="space-y-3">
-            <Label className="text-xl font-bold text-slate-700">内容</Label>
-            <Input value={content} onChange={(e) => setContent(e.target.value)} className="h-20 text-2xl rounded-2xl bg-slate-50 border-none px-6" />
-          </div>
-
-          {/* 人物 - ゆったり配置 */}
-          <div className="space-y-4">
-            <Label className="text-xl font-bold text-slate-700">誰と？</Label>
-            <div className="flex flex-wrap gap-4">
+            <Label className="text-sm font-semibold text-slate-500">誰と？</Label>
+            <div className="flex flex-wrap gap-2">
               {people.map((p) => (
                 <button key={p.id} onClick={() => setSelectedPeople(prev => prev.includes(p.name) ? prev.filter(x => x !== p.name) : [...prev, p.name])}
-                  className={cn("px-8 py-4 rounded-2xl text-xl font-bold shadow-sm transition-all", selectedPeople.includes(p.name) ? "bg-primary text-white scale-110" : "bg-slate-50 text-slate-400")}>
+                  className={cn("px-4 py-2 rounded-xl text-sm font-bold transition-all", selectedPeople.includes(p.name) ? "bg-primary text-white" : "bg-slate-50 text-slate-400")}>
                   {p.name}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* 感情 - ここが一番変わります */}
-          <div className="space-y-8 border-t pt-8">
-            <Label className="text-xl font-bold text-slate-700 block text-center">今の気持ち</Label>
-            {Object.entries(EMOTION_CONFIG).map(([id, config]) => {
-              const Icon = config.icon; const val = emotionValues[id as Emotion];
-              return (
-                <div key={id} className="flex items-center gap-8 bg-slate-50 p-6 rounded-[30px]">
-                  <div className="flex flex-col items-center w-24">
-                    <div className={cn("p-5 rounded-full transition-all", val > 0 ? "scale-125 shadow-xl" : "opacity-20")} style={{ backgroundColor: val > 0 ? config.color : 'transparent', color: val > 0 ? 'white' : config.color }}>
-                      <Icon className="w-12 h-12" />
-                    </div>
-                    <span className="text-lg font-black mt-2" style={{ color: config.color }}>{config.label}</span>
-                  </div>
-                  <Slider value={[val]} onValueChange={(v) => setEmotionValues(prev => ({ ...prev, [id]: v[0] }))} min={0} max={5} step={1} className="flex-1 h-6" />
-                </div>
-              )
-            })}
-          </div>
-
-          <Button onClick={() => {
-            const maxEm = Object.entries(emotionValues).reduce((a, b) => Math.abs(a[1]) > Math.abs(b[1]) ? a : b);
-            addEntry({
-              date: selectedDate || new Date().toISOString().split('T')[0],
-              startHour, endHour, content, people: selectedPeople, amount: parseInt(amount) || 0,
-              amountType, category, emotion: maxEm[0] as Emotion, emotionIntensity: Math.abs(maxEm[1]) || 1,
-            });
-            onClose();
-          }} className="w-full h-24 text-3xl font-black rounded-[35px] bg-primary text-white shadow-2xl">保存する</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
