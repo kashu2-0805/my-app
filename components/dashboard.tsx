@@ -10,15 +10,13 @@ import { cn } from '@/lib/utils'
 export function Dashboard() {
   const { entries = [] } = useStore()
 
-  // 🎨 感情の色設定（ソフトなトーンに統一）
   const EMOTION_CONFIG: any = {
-    anger: { label: '怒', color: '#BC8F8F', icon: Angry },     // ソフトなテラコッタ（RosyBrown）
-    sorrow: { label: '哀', color: '#6495ED', icon: Frown },     // 落ち着いた青（CornflowerBlue）
-    joy: { label: '喜', color: '#FBBF24', icon: Smile },       // 鮮やかな黄
-    happiness: { label: '楽', color: '#F472B6', icon: Zap },   // 幸福のピンク
+    anger: { label: '怒', color: '#BC8F8F', icon: Angry },
+    sorrow: { label: '哀', color: '#6495ED', icon: Frown },
+    joy: { label: '喜', color: '#FBBF24', icon: Smile },
+    happiness: { label: '楽', color: '#F472B6', icon: Zap },
   }
 
-  // 1. カテゴリー集計
   const categoryData = useMemo(() => {
     if (!entries.length) return []
     const stats: Record<string, number> = {}
@@ -32,21 +30,25 @@ export function Dashboard() {
     return Object.entries(stats).map(([id, value]) => ({ name: labels[id] || id, value }))
   }, [entries])
 
-  // 2. 対人分析集計
   const personStats = useMemo(() => {
     if (!entries.length) return []
-    const stats: Record<string, { amount: number; hours: number; emotions: Record<string, number> }> = {}
+    const stats: Record<string, { spent: number; received: number; hours: number; emotions: Record<string, number> }> = {}
     
     entries.forEach(e => {
       const duration = Math.max(1, (e.endHour || 0) - (e.startHour || 0))
       const entryPeople = e.people || []
       const entryEmotion = e.emotion || 'joy'
+      const amt = e.amount || 0
       
       entryPeople.forEach(p => {
         if (!stats[p]) {
-          stats[p] = { amount: 0, hours: 0, emotions: { joy: 0, anger: 0, sorrow: 0, happiness: 0 } }
+          stats[p] = { spent: 0, received: 0, hours: 0, emotions: { joy: 0, anger: 0, sorrow: 0, happiness: 0 } }
         }
-        stats[p].amount += (e.amount || 0)
+        if (e.amountType === 'received') {
+          stats[p].received += amt
+        } else {
+          stats[p].spent += amt
+        }
         stats[p].hours += duration
         if (stats[p].emotions[entryEmotion] !== undefined) {
           stats[p].emotions[entryEmotion] += 1
@@ -54,7 +56,8 @@ export function Dashboard() {
       })
     })
 
-    return Object.entries(stats).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.amount - a.amount)
+    return Object.entries(stats).map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => (b.spent + b.received) - (a.spent + a.received))
   }, [entries])
 
   const maxHours = useMemo(() => {
@@ -62,7 +65,8 @@ export function Dashboard() {
     return Math.max(...personStats.map(s => s.hours))
   }, [personStats])
 
-  const totalAmount = entries.reduce((sum, e) => sum + (e.amount || 0), 0)
+  const totalSpent = entries.filter(e => e.amountType !== 'received').reduce((sum, e) => sum + (e.amount || 0), 0)
+  const totalReceived = entries.filter(e => e.amountType === 'received').reduce((sum, e) => sum + (e.amount || 0), 0)
 
   if (!entries.length) return null
 
@@ -70,7 +74,7 @@ export function Dashboard() {
     <div className="p-6 space-y-12 h-full overflow-y-auto bg-slate-50 pb-40">
       <div className="space-y-2">
         <h2 className="text-3xl font-black text-slate-800 tracking-tight text-center sm:text-left">エネルギー分析</h2>
-        <p className="text-slate-500 font-medium tracking-tight text-center sm:text-left">時間とお金、あなたのリソースの行方</p>
+        <p className="text-slate-500 font-medium tracking-tight text-center sm:text-left">人との間に流れた「豊かさ」の記録</p>
       </div>
 
       {/* A. 円グラフ */}
@@ -99,68 +103,57 @@ export function Dashboard() {
         </h4>
         <div className="grid grid-cols-1 gap-8">
           {personStats.map((stat) => (
-            <div key={stat.name} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-8">
-              <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
-                
-                {/* 1. 名前と感情アイコン */}
-                <div className="w-full lg:w-1/4 space-y-4">
-                  <div>
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">Person</span>
-                    <div className="text-2xl font-bold text-slate-800">{stat.name} さん</div>
-                  </div>
-                  <div className="flex gap-3">
-                    {Object.entries(stat.emotions).map(([id, count]) => {
-                      const config = EMOTION_CONFIG[id];
-                      if (!config || count === 0) return null;
-                      return (
-                        <div key={id} className="flex flex-col items-center">
-                          <div className="p-2 rounded-full" style={{ backgroundColor: `${config.color}15`, color: config.color }}>
-                            <config.icon className="w-4 h-4" />
-                          </div>
-                          <span className="text-[10px] font-bold mt-1" style={{ color: config.color }}>{count}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
+            <div key={stat.name} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-10">
+              {/* 上段：名前と時間 */}
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+                <div className="w-full lg:w-1/4">
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">Person</span>
+                  <div className="text-3xl font-bold text-slate-800">{stat.name} さん</div>
                 </div>
 
-                {/* 2. 時間：藤色（パステルパープル）の棒グラフ */}
                 <div className="w-full lg:flex-1 space-y-3">
-                  <div className="flex items-end gap-2 px-1">
+                  <div className="flex items-end gap-2">
                     <span className="text-3xl font-black text-slate-700 leading-none">{stat.hours}</span>
-                    <span className="text-xs font-bold text-slate-400 leading-none uppercase tracking-widest">Hours</span>
+                    <span className="text-xs font-bold text-slate-400 leading-none uppercase tracking-widest">Total Hours</span>
                   </div>
-                  <div className="h-6 bg-slate-100 rounded-full overflow-hidden w-full shadow-inner">
+                  <div className="h-5 bg-slate-100 rounded-full overflow-hidden w-full">
                     <div 
-                      className="h-full bg-indigo-300 rounded-full transition-all duration-1000 ease-out" 
+                      className="h-full bg-indigo-300 rounded-full transition-all duration-1000" 
                       style={{ width: `${(stat.hours / maxHours) * 100}%` }}
                     />
                   </div>
                 </div>
+              </div>
 
-                {/* 3. 金額：特大数字 */}
-                <div className="w-full lg:w-1/3 text-left lg:text-right border-t lg:border-t-0 pt-4 lg:pt-0">
-                  <span className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-widest">Total Flow</span>
-                  <span className="text-5xl font-black text-primary tracking-tighter italic block">
-                    ¥{stat.amount.toLocaleString()}
-                  </span>
+              {/* 中段：収支の個別表示 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 border-y border-slate-50 py-8">
+                <div className="space-y-1 text-center sm:text-left">
+                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-[0.2em]">Spent (GIVE)</span>
+                  <div className="text-5xl font-black text-rose-500 tracking-tighter italic">
+                    ¥{stat.spent.toLocaleString()}
+                  </div>
+                </div>
+                <div className="space-y-1 text-center sm:text-right">
+                  <span className="text-[10px] font-bold text-sky-400 uppercase tracking-[0.2em]">Received (GIFT)</span>
+                  <div className="text-5xl font-black text-sky-500 tracking-tighter italic">
+                    ¥{stat.received.toLocaleString()}
+                  </div>
                 </div>
               </div>
 
-              {/* 🌈 感情比率グラフ：文字を大きく、色をソフトに */}
-              <div className="pt-6 border-t border-slate-50 space-y-3">
+              {/* 下段：感情比率 */}
+              <div className="space-y-4">
                 <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase ml-1">Emotion Balance</span>
-                <div className="h-7 bg-slate-100 rounded-xl overflow-hidden flex w-full shadow-inner border border-slate-100">
+                <div className="h-8 bg-slate-100 rounded-2xl overflow-hidden flex w-full border border-slate-50">
                   {Object.entries(stat.emotions).map(([id, count]) => {
                     const config = EMOTION_CONFIG[id];
                     if (!config || count === 0) return null;
                     const total = Object.values(stat.emotions).reduce((a, b: any) => a + b, 0);
                     const width = (count / total) * 100;
-                    
                     return (
                       <div 
                         key={id} 
-                        className="h-full flex items-center justify-center text-white text-[13px] font-bold transition-all duration-700"
+                        className="h-full flex items-center justify-center text-white text-[13px] font-bold transition-all"
                         style={{ width: `${width}%`, backgroundColor: config.color }}
                       >
                         {width > 10 && config.label}
@@ -175,13 +168,16 @@ export function Dashboard() {
       </div>
 
       {/* C. 総額カード */}
-      <Card className="bg-slate-900 text-white border-none shadow-2xl rounded-[45px] mt-10">
-        <CardContent className="p-12 text-center space-y-4">
-          <Heart className="w-10 h-10 mx-auto text-pink-500 opacity-80 animate-pulse" />
-          <h3 className="text-6xl font-black italic tracking-tighter">¥{totalAmount.toLocaleString()}</h3>
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.3em]">Total Life Energy Flow</p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="bg-rose-500 text-white border-none shadow-xl rounded-[40px] p-8 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-2">Total Give (支出)</p>
+          <h3 className="text-4xl font-black italic">¥{totalSpent.toLocaleString()}</h3>
+        </Card>
+        <Card className="bg-sky-500 text-white border-none shadow-xl rounded-[40px] p-8 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-2">Total Gift (収入)</p>
+          <h3 className="text-4xl font-black italic">¥{totalReceived.toLocaleString()}</h3>
+        </Card>
+      </div>
     </div>
   )
 }
