@@ -6,12 +6,10 @@ import { useStore } from '@/lib/store'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Users, Heart, PieChart as PieIcon, Smile, Frown, Angry, Zap, TrendingUp } from 'lucide-react'
 
-// エラー回避のため、複雑な外部依存を整理しました
 export function Dashboard() {
   const { entries = [] } = useStore()
   const [range, setRange] = useState<'1W' | '1M' | '1Y'>('1W')
 
-  // 🎨 感情の色設定
   const EMOTION_CONFIG: any = {
     anger: { label: '怒', color: '#BC8F8F', icon: Angry },     
     sorrow: { label: '哀', color: '#6495ED', icon: Frown },     
@@ -19,15 +17,29 @@ export function Dashboard() {
     happiness: { label: '楽', color: '#F472B6', icon: Zap },   
   }
 
-  // 1. 感情推移データ
+  // 1. 📈 期間に応じたグラフデータの生成
   const timelineData = useMemo(() => {
     if (!entries.length) return []
-    return entries.slice(-10).map((e) => ({
-      name: `${e.startHour}:00`,
+
+    // 期間設定に基づいたフォーマット関数
+    const formatDate = (dateStr: string) => {
+      const date = new Date(dateStr)
+      if (range === '1Y') return `${date.getMonth() + 1}月`
+      if (range === '1M') return `${date.getDate()}日`
+      return `${date.getMonth() + 1}/${date.getDate()}` // 1週間は月日
+    }
+
+    // データを日付順に並び替え
+    const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    // 期間でフィルタリング（簡易実装：直近のデータを各単位で集約）
+    return sortedEntries.map((e) => ({
+      displayDate: formatDate(e.date),
       intensity: e.emotionIntensity || 50,
-      fullDate: e.date
+      fullDate: e.date,
+      time: `${e.startHour}:00`
     }))
-  }, [entries])
+  }, [entries, range])
 
   // 2. カテゴリー集計
   const categoryData = useMemo(() => {
@@ -80,7 +92,7 @@ export function Dashboard() {
         <p className="text-slate-500 font-medium tracking-tight leading-none pt-2">人生のバイオリズムを俯瞰する</p>
       </div>
 
-      {/* 📈 感情の推移グラフ */}
+      {/* 📈 感情の推移グラフ（軸の自動切り替え対応） */}
       <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
         <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 pt-8 px-8">
           <CardTitle className="text-slate-700 text-base font-bold flex items-center gap-2">
@@ -104,17 +116,27 @@ export function Dashboard() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" stroke="#cbd5e1" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis 
+                dataKey="displayDate" 
+                stroke="#cbd5e1" 
+                fontSize={12} 
+                tickLine={false} 
+                axisLine={false} 
+                interval={range === '1W' ? 0 : 'preserveStartEnd'} // 1年時は間引いて表示
+              />
               <YAxis hide domain={[0, 100]} />
-              <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+              <Tooltip 
+                labelFormatter={(label, payload) => payload[0]?.payload.fullDate || label}
+                contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
+              />
               <Line type="monotone" dataKey="intensity" stroke="#6366f1" strokeWidth={4} dot={{ r: 6, fill: "#6366f1", strokeWidth: 0 }} />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* A. 円グラフ & 総サマリー */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* A. 円グラフ */}
         <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
           <CardHeader className="pb-0 pt-8 text-center">
             <CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2">
@@ -133,6 +155,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* 総サマリー */}
         <div className="flex flex-col gap-6">
           <Card className="bg-white border-none shadow-sm rounded-[40px] p-10 text-center flex-1 flex flex-col justify-center transition-transform hover:scale-[1.02]">
             <p className="text-[15px] font-bold uppercase tracking-[0.3em] text-rose-400 mb-4">今日の総 GIVE</p>
@@ -165,21 +188,21 @@ export function Dashboard() {
                       <span className="text-2xl font-black text-slate-300 italic mb-0.5">時間</span>
                     </div>
                     <div className="h-6 bg-slate-50 rounded-full overflow-hidden w-full shadow-inner border border-slate-100">
-                      <div className="h-full bg-indigo-300 rounded-full transition-all duration-1000 ease-out" style={{ width: `${(stat.hours / maxHours) * 100}%` }} />
+                      <div className="h-full bg-indigo-300 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(165,180,252,0.4)]" style={{ width: `${(stat.hours / maxHours) * 100}%` }} />
                     </div>
                   </div>
                   <div className="w-full lg:w-1/2 space-y-6 text-left lg:text-right border-t lg:border-t-0 pt-6 lg:pt-0 order-3 lg:order-none">
                     <div className="space-y-1">
                       <span className="text-[14px] font-bold text-rose-400 uppercase tracking-[0.2em] block mb-2">GIVE (支出)</span>
-                      <div className="flex items-center lg:justify-end leading-none">
-                        <span className="text-2xl font-black text-rose-300 mr-1 italic leading-none">¥</span>
+                      <div className="flex items-center lg:justify-end">
+                        <span className="text-2xl font-black text-rose-300 mr-1 italic">¥</span>
                         <span className="text-5xl font-black text-rose-500 tracking-tighter italic leading-none">{stat.spent.toLocaleString()}</span>
                       </div>
                     </div>
                     <div className="space-y-1 pt-2">
                       <span className="text-[14px] font-bold text-indigo-400 uppercase tracking-[0.2em] block mb-2">GIFT (収入)</span>
-                      <div className="flex items-center lg:justify-end leading-none">
-                        <span className="text-2xl font-black text-indigo-300 mr-1 italic leading-none">¥</span>
+                      <div className="flex items-center lg:justify-end">
+                        <span className="text-2xl font-black text-indigo-300 mr-1 italic">¥</span>
                         <span className="text-5xl font-black text-indigo-500 tracking-tighter italic leading-none">{stat.received.toLocaleString()}</span>
                       </div>
                     </div>
