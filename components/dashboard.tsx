@@ -37,13 +37,13 @@ export function Dashboard() {
 
     const filtered = entries.filter(e => new Date(e.date) >= startDate)
 
-    // ✨ 日付ラベルの生成ロジック
-    const fmt = (d: Date) => `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+    // ✨ 日付ラベルの生成（ここをさらに大きく、読みやすく）
+    const fmt = (d: Date) => `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
     let label = ""
     if (range === '1D') {
       label = fmt(now)
     } else {
-      label = `${fmt(startDate)} 〜 ${fmt(now)}`
+      label = `${fmt(startDate)} - ${fmt(now)}`
     }
 
     return { filteredEntries: filtered, dateLabel: label }
@@ -59,7 +59,7 @@ export function Dashboard() {
       })
   }, [filteredEntries, range])
 
-  // 2. 🥧 カテゴリー集計
+  // 2. 🥧 お金カテゴリー集計
   const categoryData = useMemo(() => {
     const stats: Record<string, number> = {}
     filteredEntries.forEach(e => {
@@ -69,7 +69,7 @@ export function Dashboard() {
     return Object.entries(stats).map(([id, value]) => ({ name: categoryLabels[id] || id, value }))
   }, [filteredEntries])
 
-  // 3. 🥧 関係性別（時間）集計
+  // 3. 🥧 時間ポートフォリオ集計
   const relationshipData = useMemo(() => {
     const stats: Record<string, number> = {}
     filteredEntries.forEach(e => {
@@ -105,29 +105,39 @@ export function Dashboard() {
 
   return (
     <div className="p-6 space-y-12 h-full overflow-y-auto bg-slate-50 pb-40 text-slate-800 leading-none">
-      <div className="space-y-4 text-center sm:text-left leading-none">
-        <h2 className="text-3xl font-black tracking-tight leading-none">エネルギー分析</h2>
-        
-        {/* ✨ 期間表示ラベルを大きく追加 */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">
-          <div className="flex bg-white p-1.5 rounded-[24px] gap-1 shadow-sm border border-slate-100">
-            {(['1D', '1W', '1M', '6M'] as const).map((r) => (
-              <button key={r} onClick={() => setRange(r)} className={`rounded-[18px] px-6 py-2 h-10 text-sm font-black transition-all ${range === r ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50"}`}>
-                {r === '1D' ? '1日' : r === '1W' ? '1週間' : r === '1M' ? '1ヶ月' : '半年'}
-              </button>
-            ))}
+      
+      {/* 🏁 ヘッダーエリア：ここを大きく改善！ */}
+      <div className="flex flex-col gap-6 border-b border-slate-200 pb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-200">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-3xl font-black tracking-tighter">エネルギー分析</h2>
           </div>
-          <div className="flex items-center gap-2 px-6 py-3 bg-indigo-50/50 rounded-[24px] border border-indigo-100/50 transition-all">
-            <Calendar className="w-4 h-4 text-indigo-400" />
-            <span className="text-xl font-black text-indigo-600 tracking-tight leading-none italic">{dateLabel}</span>
+          {/* ✨ 日付を特大サイズで表示 */}
+          <div className="flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-indigo-400" />
+            <span className="text-4xl font-black text-indigo-600 tracking-tighter italic drop-shadow-sm">
+              {dateLabel}
+            </span>
           </div>
+        </div>
+
+        {/* 操作パネル（ボタン） */}
+        <div className="flex bg-white p-1.5 rounded-[24px] gap-1 shadow-md border border-slate-100 self-start sm:self-auto">
+          {(['1D', '1W', '1M', '6M'] as const).map((r) => (
+            <button key={r} onClick={() => setRange(r)} className={`rounded-[18px] px-6 py-2 h-10 text-sm font-black transition-all ${range === r ? "bg-indigo-600 text-white shadow-md scale-105" : "text-slate-400 hover:bg-slate-50"}`}>
+              {r === '1D' ? '1日' : r === '1W' ? '1週間' : r === '1M' ? '1ヶ月' : '半年'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* 📈 感情グラフ */}
+      {/* 📈 感情グラフ（クリック詳細表示） */}
       <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
         <CardHeader className="pb-2 pt-8 px-8">
-          <CardTitle className="text-slate-700 text-base font-bold flex items-center gap-2"><TrendingUp className="w-5 h-5 text-indigo-400" /> 感情のバイオリズム</CardTitle>
+          <CardTitle className="text-slate-700 text-base font-bold flex items-center gap-2"><TrendingUp className="w-5 h-5 text-indigo-400" /> バイオリズム</CardTitle>
         </CardHeader>
         <CardContent className="h-64 pt-4 px-4 sm:px-8">
           <ResponsiveContainer width="100%" height="100%">
@@ -143,7 +153,7 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* 日記ダイアログ（省略せずに維持） */}
+      {/* 詳細ダイアログ (変更なし) */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
         <DialogContent className="rounded-[40px] border-none p-0 overflow-hidden max-w-[90vw] sm:max-w-md shadow-2xl">
           {selectedEntry && (
@@ -152,17 +162,17 @@ export function Dashboard() {
                 {React.createElement(EMOTION_CONFIG[selectedEntry.emotion]?.icon || Smile, { className: "w-10 h-10 drop-shadow-md" })}
                 <span className="text-2xl font-black drop-shadow-sm">記憶の記録</span>
               </div>
-              <div className="p-8 space-y-6 bg-white -mt-6 rounded-t-[40px] relative leading-none">
-                <div className="flex justify-between items-start leading-none">
-                  <div className="space-y-1 leading-none">
+              <div className="p-8 space-y-6 bg-white -mt-6 rounded-t-[40px] relative">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest leading-none mb-1"><Clock className="w-3 h-3" /> {selectedEntry.date} | {selectedEntry.startHour}:00</div>
                     <div className="text-4xl font-black text-slate-800 leading-none pt-1">¥{selectedEntry.amount.toLocaleString()}</div>
                   </div>
-                  <div className="px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 flex items-center gap-2 border border-slate-100 uppercase tracking-widest leading-none"><Tag className="w-3 h-3" /> {categoryLabels[selectedEntry.category]}</div>
+                  <div className="px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 flex items-center gap-2 border border-slate-100 uppercase tracking-widest"><Tag className="w-3 h-3" /> {categoryLabels[selectedEntry.category]}</div>
                 </div>
                 <div className="bg-slate-50 p-6 rounded-[32px] text-slate-700 italic border border-slate-100 shadow-inner leading-normal">"{selectedEntry.note || "（メモはありません）"}"</div>
-                <div className="flex gap-2 flex-wrap leading-none">
-                  <span className="px-4 py-2 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold uppercase tracking-widest leading-none">{selectedEntry.relationship || 'その他'}</span>
+                <div className="flex gap-2 flex-wrap">
+                  <span className="px-4 py-2 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold uppercase tracking-widest">{selectedEntry.relationship || 'その他'}</span>
                   {selectedEntry.people.map((p: string) => (<span key={p} className="px-4 py-2 bg-indigo-50 text-indigo-500 rounded-full text-[10px] font-bold uppercase tracking-widest border border-indigo-100 leading-none">@{p}</span>))}
                 </div>
               </div>
@@ -173,33 +183,23 @@ export function Dashboard() {
 
       {/* 円グラフ2種 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
-          <CardHeader className="pb-0 pt-8 text-center leading-none">
-            <CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2 leading-none"><PieIcon className="w-5 h-5 text-indigo-400" /> お金のバランス</CardTitle>
-          </CardHeader>
+        <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden leading-none">
+          <CardHeader className="pb-0 pt-8 text-center leading-none"><CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2 leading-none"><PieIcon className="w-5 h-5 text-indigo-400 leading-none" /> お金のバランス</CardTitle></CardHeader>
           <CardContent className="h-72 leading-none pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={35} outerRadius={95} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
-                  {categoryData.map((_, i) => <Cell key={i} fill={['#6366f1', '#f472b6', '#10b981', '#f59e0b'][i % 4]} stroke="none" />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
+              <PieChart><Pie data={categoryData} cx="50%" cy="50%" innerRadius={35} outerRadius={95} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
+                {categoryData.map((_, i) => <Cell key={i} fill={['#6366f1', '#f472b6', '#10b981', '#f59e0b'][i % 4]} stroke="none" />)}
+              </Pie><Tooltip /></PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
-          <CardHeader className="pb-0 pt-8 text-center leading-none">
-            <CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2"><Briefcase className="w-5 h-5 text-indigo-400" /> 時間のポートフォリオ</CardTitle>
-          </CardHeader>
+        <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden leading-none">
+          <CardHeader className="pb-0 pt-8 text-center leading-none"><CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2 leading-none"><Briefcase className="w-5 h-5 text-indigo-400 leading-none" /> 時間のポートフォリオ</CardTitle></CardHeader>
           <CardContent className="h-72 leading-none pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={relationshipData} cx="50%" cy="50%" innerRadius={35} outerRadius={95} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
-                  {relationshipData.map((_, i) => <Cell key={i} fill={['#818cf8', '#fb7185', '#34d399', '#f472b6', '#94a3b8'][i % 5]} stroke="none" />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
+              <PieChart><Pie data={relationshipData} cx="50%" cy="50%" innerRadius={35} outerRadius={95} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
+                {relationshipData.map((_, i) => <Cell key={i} fill={['#818cf8', '#fb7185', '#34d399', '#f472b6', '#94a3b8'][i % 5]} stroke="none" />)}
+              </Pie><Tooltip /></PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -207,7 +207,7 @@ export function Dashboard() {
 
       {/* 対人分析 */}
       <div className="space-y-6">
-        <h4 className="flex items-center gap-2 text-xl font-bold text-slate-700 ml-2 leading-none"><Users className="w-6 h-6 text-primary" /> 対人分析</h4>
+        <h4 className="flex items-center gap-2 text-xl font-bold text-slate-700 ml-2 leading-none"><Users className="w-6 h-6 text-primary leading-none" /> 対人分析</h4>
         <div className="grid grid-cols-1 gap-10">
           {personStats.map((stat) => (
             <div key={stat.name} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-10 transition-all hover:shadow-md">
@@ -217,12 +217,12 @@ export function Dashboard() {
                   <div className="text-3xl font-black leading-none">{stat.name} <span className="text-lg font-medium text-slate-400">さん</span></div>
                 </div>
                 <div className="flex flex-col lg:flex-row lg:flex-1 w-full gap-8 lg:gap-12 leading-none text-nowrap">
-                  <div className="w-full lg:flex-1 space-y-3 px-2 order-1 lg:order-none leading-none"><div className="flex items-end gap-1 px-1 leading-none"><span className="text-4xl font-black text-slate-700 leading-none">{stat.hours}</span><span className="text-2xl font-black text-slate-300 italic mb-0.5 leading-none">時間</span></div>
+                  <div className="w-full lg:flex-1 space-y-3 px-2 order-1 lg:order-none leading-none"><div className="flex items-end gap-1 px-1 leading-none"><span className="text-4xl font-black text-slate-700 leading-none">{stat.hours}</span><span className="text-2xl font-black text-slate-300 italic mb-0.5 leading-none font-black">時間</span></div>
                     <div className="h-6 bg-slate-50 rounded-full overflow-hidden w-full shadow-inner border border-slate-100 leading-none"><div className="h-full bg-indigo-300 rounded-full transition-all duration-1000 ease-out" style={{ width: `${(stat.hours / maxHours) * 100}%` }} /></div>
                   </div>
                   <div className="w-full lg:w-1/3 space-y-6 text-left lg:text-right border-t lg:border-t-0 pt-6 lg:pt-0 order-3 lg:order-none leading-none font-bold">
-                    <div className="space-y-1 leading-none"><span className="text-[14px] font-bold text-rose-400 uppercase tracking-[0.2em] block mb-2 leading-none">GIVE (支出)</span><div className="flex items-center lg:justify-end leading-none"><span className="text-2xl font-black text-rose-300 mr-1 italic leading-none">¥</span><span className="text-5xl font-black text-rose-500 tracking-tighter italic leading-none">{stat.spent.toLocaleString()}</span></div></div>
-                    <div className="space-y-1 pt-2 leading-none"><span className="text-[14px] font-bold text-indigo-400 uppercase tracking-[0.2em] block mb-2 leading-none">GIFT (収入)</span><div className="flex items-center lg:justify-end leading-none"><span className="text-2xl font-black text-indigo-300 mr-1 italic leading-none">¥</span><span className="text-5xl font-black text-indigo-500 tracking-tighter italic leading-none">{stat.received.toLocaleString()}</span></div></div>
+                    <div className="space-y-1 leading-none"><span className="text-[14px] font-bold text-rose-400 uppercase tracking-[0.2em] block mb-2 leading-none font-bold">GIVE (支出)</span><div className="flex items-center lg:justify-end leading-none"><span className="text-2xl font-black text-rose-300 mr-1 italic leading-none font-black">¥</span><span className="text-5xl font-black text-rose-500 tracking-tighter italic leading-none">{stat.spent.toLocaleString()}</span></div></div>
+                    <div className="space-y-1 pt-2 leading-none"><span className="text-[14px] font-bold text-indigo-400 uppercase tracking-[0.2em] block mb-2 leading-none font-bold">GIFT (収入)</span><div className="flex items-center lg:justify-end leading-none"><span className="text-2xl font-black text-indigo-300 mr-1 italic leading-none font-black">¥</span><span className="text-5xl font-black text-indigo-500 tracking-tighter italic leading-none">{stat.received.toLocaleString()}</span></div></div>
                   </div>
                 </div>
               </div>
@@ -243,8 +243,8 @@ export function Dashboard() {
 
       {/* 総まとめ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-16 pb-20 leading-none">
-        <Card className="bg-white border-none shadow-sm rounded-[50px] p-12 text-center transition-transform hover:scale-[1.02] border border-rose-50 leading-none"><p className="text-[15px] font-bold uppercase tracking-[0.4em] text-rose-300 mb-4 leading-none">Total GIVE Flow</p><h3 className="text-6xl font-black italic text-rose-500 tracking-tighter leading-none">¥{totalSpent.toLocaleString()}</h3></Card>
-        <Card className="bg-white border-none shadow-sm rounded-[50px] p-12 text-center transition-transform hover:scale-[1.02] border border-indigo-50 leading-none"><p className="text-[15px] font-bold uppercase tracking-[0.4em] text-indigo-300 mb-4 leading-none">Total GIFT Flow</p><h3 className="text-6xl font-black italic text-indigo-500 tracking-tighter leading-none">¥{totalReceived.toLocaleString()}</h3></Card>
+        <Card className="bg-white border-none shadow-sm rounded-[50px] p-12 text-center transition-transform hover:scale-[1.02] border border-rose-50 leading-none"><p className="text-[15px] font-bold uppercase tracking-[0.4em] text-rose-300 mb-4 leading-none font-black">Total GIVE Flow</p><h3 className="text-6xl font-black italic text-rose-500 tracking-tighter leading-none">¥{totalSpent.toLocaleString()}</h3></Card>
+        <Card className="bg-white border-none shadow-sm rounded-[50px] p-12 text-center transition-transform hover:scale-[1.02] border border-indigo-50 leading-none"><p className="text-[15px] font-bold uppercase tracking-[0.4em] text-indigo-300 mb-4 leading-none font-black">Total GIFT Flow</p><h3 className="text-6xl font-black italic text-indigo-500 tracking-tighter leading-none">¥{totalReceived.toLocaleString()}</h3></Card>
       </div>
     </div>
   )
