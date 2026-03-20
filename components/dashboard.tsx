@@ -5,12 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useStore } from '@/lib/store'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { Users, Heart, PieChart as PieIcon, Smile, Frown, Angry, Zap } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export function Dashboard() {
   const { entries = [] } = useStore()
 
-  // 🎨 感情の色設定（ソフト・パステルトーン）
+  // 🎨 感情の色設定
   const EMOTION_CONFIG: any = {
     anger: { label: '怒', color: '#BC8F8F', icon: Angry },     
     sorrow: { label: '哀', color: '#6495ED', icon: Frown },     
@@ -18,7 +17,7 @@ export function Dashboard() {
     happiness: { label: '楽', color: '#F472B6', icon: Zap },   
   }
 
-  // 1. カテゴリー集計 (🌈 ここをご要望の言葉に戻しました！)
+  // 1. カテゴリー集計 (「じぶん投資」などの名称を維持)
   const categoryData = useMemo(() => {
     if (!entries.length) return []
     const stats: Record<string, number> = {}
@@ -26,18 +25,16 @@ export function Dashboard() {
       const cat = e.category || 'living-cost'
       stats[cat] = (stats[cat] || 0) + (e.amount || 0)
     })
-    
-    // 🏷️ ここが修正ポイントです
     const labels: Record<string, string> = {
-      'self-investment': 'じぶん投資',   // 📚
-      'self-reward': 'じぶんご褒美',      // ✨
-      'living-cost': '生存コスト',        // 🏠
-      'waste': '無駄遣い'               // 💸
+      'self-investment': 'じぶん投資',
+      'self-reward': 'じぶんご褒美',
+      'living-cost': '生存コスト',
+      'waste': '無駄遣い'
     }
     return Object.entries(stats).map(([id, value]) => ({ name: labels[id] || id, value }))
   }, [entries])
 
-  // 2. 対人分析集計（収支を個別に集計）
+  // 2. 対人分析集計
   const personStats = useMemo(() => {
     if (!entries.length) return []
     const stats: Record<string, { spent: number; received: number; hours: number; emotions: Record<string, number> }> = {}
@@ -82,22 +79,32 @@ export function Dashboard() {
     <div className="p-6 space-y-12 h-full overflow-y-auto bg-slate-50 pb-40 text-slate-800">
       <div className="space-y-2 text-center sm:text-left">
         <h2 className="text-3xl font-black tracking-tight">エネルギー分析</h2>
-        <p className="text-slate-500 font-medium tracking-tight leading-none">リソースの循環を振り返る</p>
+        <p className="text-slate-500 font-medium tracking-tight">リソースの循環を振り返る</p>
       </div>
 
-      {/* A. 円グラフ：カテゴリー名を「じぶん投資」などに修正 */}
+      {/* A. 円グラフ：中央を狭めて、色の部分を太く！ */}
       <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
         <CardHeader className="pb-0 pt-8 text-center leading-none">
           <CardTitle className="text-slate-700 text-base font-bold flex justify-center items-center gap-2 leading-none">
             <PieIcon className="w-5 h-5 text-primary" /> カテゴリー別の割合
           </CardTitle>
         </CardHeader>
-        <CardContent className="h-64 leading-none pt-4">
+        <CardContent className="h-72 leading-none pt-4">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" 
-                   label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                {categoryData.map((_, i) => <Cell key={i} fill={['#6366f1', '#f472b6', '#10b981', '#f59e0b'][i % 4]} />)}
+              <Pie 
+                data={categoryData} 
+                cx="50%" 
+                cy="50%" 
+                innerRadius={30} // 50→30へ：中央の穴を小さく
+                outerRadius={90} // 80→90へ：外径を少し大きく
+                dataKey="value" 
+                label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                paddingAngle={2}
+              >
+                {categoryData.map((_, i) => (
+                  <Cell key={i} fill={['#6366f1', '#f472b6', '#10b981', '#f59e0b'][i % 4]} stroke="none" />
+                ))}
               </Pie>
               <Tooltip />
             </PieChart>
@@ -105,7 +112,7 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* B. 対人分析セクション（以前の調整を維持） */}
+      {/* B. 対人分析セクション */}
       <div className="space-y-6">
         <h4 className="flex items-center gap-2 text-xl font-bold text-slate-700 ml-2">
           <Users className="w-6 h-6 text-primary" /> 対人分析
@@ -141,7 +148,7 @@ export function Dashboard() {
                 <div className="w-full lg:flex-1 space-y-3 px-2 leading-none">
                   <div className="flex items-end gap-2 px-1 leading-none">
                     <span className="text-3xl font-black leading-none">{stat.hours}</span>
-                    <span className="text-[14px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">時間 spent</span>
+                    <span className="text-[14px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 text-nowrap">時間 spent</span>
                   </div>
                   <div className="h-6 bg-slate-50 rounded-full overflow-hidden w-full shadow-inner border border-slate-100 leading-none">
                     <div 
@@ -174,7 +181,7 @@ export function Dashboard() {
                 </div>
               </div>
 
-              {/* 感情比率バー（文字サイズ調整） */}
+              {/* 感情比率バー */}
               <div className="pt-8 border-t border-slate-50 space-y-4 leading-none">
                 <span className="text-[14px] font-bold text-slate-400 tracking-[0.2em] uppercase ml-1 block leading-none mb-2">感情のバランス</span>
                 <div className="h-8 bg-slate-50 rounded-2xl overflow-hidden flex w-full border border-slate-100 shadow-inner leading-none">
@@ -200,8 +207,8 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* C. 総サマリーカード（ラベル拡大） */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10LEADING-NONE leading-none">
+      {/* C. 総サマリー */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10 leading-none">
         <Card className="bg-white border-none shadow-sm rounded-[45px] p-10 text-center leading-none transition-transform hover:scale-[1.02]">
           <p className="text-[15px] font-bold uppercase tracking-[0.3em] text-rose-400 mb-4 leading-none">今日の総 GIVE</p>
           <h3 className="text-5xl font-black italic text-rose-500 tracking-tighter leading-none">¥{totalSpent.toLocaleString()}</h3>
