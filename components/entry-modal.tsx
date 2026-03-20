@@ -109,3 +109,51 @@ export function EntryModal({ isOpen, onClose, initialHour = 9, editEntry, select
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 金額（復活！） */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-slate-500">金額入力</Label>
+            <div className="flex gap-2">
+              <Button variant={amountType === 'spent' ? 'destructive' : 'secondary'} size="sm" className="flex-1 rounded-xl h-10" onClick={() => setAmountType('spent')}>支出</Button>
+              <Button variant={amountType === 'received' ? 'default' : 'secondary'} size="sm" className="flex-1 rounded-xl h-10" onClick={() => setAmountType('received')}>収入</Button>
+            </div>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">¥</span>
+              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="pl-8 h-12 rounded-xl bg-slate-50 border-none" placeholder="0" />
+            </div>
+          </div>
+
+          {/* 感情 */}
+          <div className="pt-6 border-t space-y-6">
+            <Label className="text-sm font-semibold text-slate-500 block text-center">今の気持ち</Label>
+            {Object.entries(EMOTION_CONFIG).map(([id, config]) => {
+              const Icon = config.icon; const val = emotionValues[id as Emotion];
+              return (
+                <div key={id} className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl">
+                  <div className="flex flex-col items-center w-12 shrink-0">
+                    <div className={cn("p-2 rounded-full transition-all", val > 0 ? "scale-110" : "opacity-20")} style={{ backgroundColor: val > 0 ? config.color : 'transparent', color: val > 0 ? 'white' : config.color }}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <span className="text-[10px] font-bold mt-1" style={{ color: config.color }}>{config.label}</span>
+                  </div>
+                  <Slider value={[val]} onValueChange={(v) => setEmotionValues(prev => ({ ...prev, [id]: v[0] }))} min={0} max={5} step={1} className="flex-1" />
+                </div>
+              )
+            })}
+          </div>
+
+          <Button onClick={() => {
+            const maxEm = Object.entries(emotionValues).reduce((a, b) => Math.abs(a[1]) > Math.abs(b[1]) ? a : b);
+            addEntry({
+              date: selectedDate || new Date().toISOString().split('T')[0],
+              startHour, endHour, content, people: selectedPeople, amount: parseInt(amount) || 0,
+              amountType, category, emotion: maxEm[0] as Emotion, emotionIntensity: Math.abs(maxEm[1]) || 1,
+            });
+            onClose();
+          }} className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-white">記録を保存</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
